@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}
+Crear cuenta | ICCP Social
+{% endblock %}
+
+{% block content %}
+
+<div class="auth-container">
+
+    <div class="auth-card">
+
+        <div class="auth-header">
+
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="ICCP Social" class="auth-logo">
+
+            <h1>Crear cuenta</h1>
+
+            <p>
+                Únete a ICCP Social y comienza a compartir.
+            </p>
+
+        </div>
+
+        <form method="POST" novalidate data-ajax-advancement>
+
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+
+                {{ form.username.label }}
+
+                {{ form.username(
+                    class="form-control",
+                    placeholder="Nombre de usuario"
+                ) }}
+
+                {% for error in form.username.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.email.label }}
+
+                {{ form.email(
+                    class="form-control",
+                    placeholder="correo@ejemplo.com"
+                ) }}
+
+                {% for error in form.email.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.password.label }}
+
+                {{ form.password(
+                    class="form-control",
+                    placeholder="Mínimo 8 caracteres"
+                ) }}
+
+                {% for error in form.password.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.confirm_password.label }}
+
+                {{ form.confirm_password(
+                    class="form-control",
+                    placeholder="Repite tu contraseña"
+                ) }}
+
+                {% for error in form.confirm_password.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.submit(
+                    class="btn-primary"
+                ) }}
+
+            </div>
+
+        </form>
+
+        <div class="auth-footer">
+
+            <p>
+
+                ¿Ya tienes una cuenta?
+
+                <a href="{{ url_for('login') }}">
+                    Inicia sesión
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

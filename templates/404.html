@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}
+Página no encontrada | SocialApp
+{% endblock %}
+
+
+{% block content %}
+
+<div class="auth-container">
+
+    <div class="auth-card error-page">
+
+
+        <div class="auth-header">
+
+
+            <h1>
+                404
+            </h1>
+
+
+            <h2>
+                Página no encontrada
+            </h2>
+
+
+            <p>
+                La página que buscas no existe o fue movida.
+            </p>
+
+
+        </div>
+
+
+
+        <a
+            href="{{ url_for('home') }}"
+            class="btn-primary"
+        >
+
+            Volver al inicio
+
+        </a>
+
+
+
+    </div>
+
+</div>
+
+
+{% endblock %}

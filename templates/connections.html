@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Seguidores' if mode == 'followers' else 'Siguiendo' }} | ICCP Social{% endblock %}
+{% block content %}
+<div class="connections-page">
+    <header class="connections-header">
+        <a class="back-link" href="{{ url_for('user_profile', user_id=user.id) if user.id != current_user.id else url_for('profile') }}">←</a>
+        <div><span class="eyebrow">@{{ user.username }}</span><h1>{{ 'Seguidores' if mode == 'followers' else 'Siguiendo' }}</h1></div>
+    </header>
+    <div class="connections-list">
+        {% for item in users %}
+        <a class="connection-card" href="{{ url_for('user_profile', user_id=item.id) }}">
+            <img src="{{ url_for('static', filename='uploads/' + (item.profile_picture or 'default.png')) }}" alt="">
+            <div><strong>{{ item.username }}</strong><span>@{{ item.username }}</span>{% if item.bio %}<p>{{ item.bio }}</p>{% endif %}</div>
+            <span class="connection-arrow">→</span>
+        </a>
+        {% else %}
+        <div class="empty-state compact"><h3>Aún no hay usuarios aquí</h3><p>Las conexiones aparecerán en esta lista.</p></div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

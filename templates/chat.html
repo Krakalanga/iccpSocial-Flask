@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}
+Chat con {{ other_user.username }}
+{% endblock %}
+
+{% block content %}
+
+<div class="chat-page">
+
+    <div class="chat-card">
+
+        <!-- HEADER -->
+        <div class="chat-header">
+            <a href="{{ url_for('user_profile', user_id=other_user.id) }}" class="chat-user-link">
+                <img
+                    class="chat-avatar"
+                    src="{{ url_for('static', filename='uploads/' + (other_user.profile_picture or 'default.png')) }}"
+                    alt="Perfil de {{ other_user.username }}"
+                >
+                <div class="chat-user-details">
+                    <h2>{{ other_user.username }}</h2>
+                    <div class="user-status">
+                        <span class="status-dot {% if other_user.is_online %}online{% else %}offline{% endif %}"
+                              id="chat-status-dot"></span>
+                        <span class="status-text" id="chat-status-text">
+                            {% if other_user.is_online %}Conectado{% else %}Desconectado{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </a>
+            <a href="{{ url_for('conversations') }}" class="back-btn" aria-label="Volver"><i data-lucide="arrow-left"></i></a>
+        </div>
+
+        <!-- MENSAJES -->
+        <div class="chat-body" id="chat-box">
+
+            {% for message in messages %}
+
+                {% if message.sender_id == current_user.id %}
+
+                    <!-- Mensaje propio -->
+                    <div class="message own" data-message-id="{{ message.id }}">
+                        <div class="bubble">
+                            {% if message.content %}
+                                <p class="message-content">{{ message.content }}</p>
+                            {% endif %}
+                            {% if message.image %}
+                                <img
+                                    src="{{ message.image if message.image.startswith('https://') else url_for('static', filename='uploads/' + message.image) }}"
+                                    class="message-image"
+                                    alt="Imagen"
+                                >
+                            {% endif %}
+                            <span class="message-time">{{ message.timestamp|localtime("%H:%M") }}</span>
+                        </div>
+                    </div>
+
+                {% else %}
+
+                    <!-- Mensaje del otro usuario -->
+                    <div class="message other" data-message-id="{{ message.id }}">
+                        <img
+                            class="message-avatar"
+                            src="{{ url_for('static', filename='uploads/' + (other_user.profile_picture or 'default.png')) }}"
+                            alt="{{ other_user.username }}"
+                        >
+                        <div class="bubble">
+                            {% if message.content %}
+                                <p class="message-content">{{ message.content }}</p>
+                            {% endif %}
+                            {% if message.image %}
+                                <img
+                                    src="{{ message.image if message.image.startswith('https://') else url_for('static', filename='uploads/' + message.image) }}"
+                                    class="message-image"
+                                    alt="Imagen"
+                                >
+                            {% endif %}
+                            <span class="message-time">{{ message.timestamp|localtime("%H:%M") }}</span>
+                        </div>
+                    </div>
+
+                {% endif %}
+
+            {% endfor %}
+
+        </div>
+
+        <div id="typing-status" class="typing-status"></div>
+
+        <!-- INPUT -->
+        <div class="chat-input-area">
+            <form method="POST" enctype="multipart/form-data" id="chat-form" class="chat-form">
+                {{ form.hidden_tag() }}
+
+                <div class="chat-input-wrapper">
+
+                    <label for="imageInput" class="attach-btn" title="Adjuntar imagen" aria-label="Adjuntar imagen">
+                        <i data-lucide="image-plus"></i>
+                    </label>
+                    <input
+                        type="file"
+                        id="imageInput"
+                        name="image"
+                        accept="image/*"
+                        style="display: none;"
+                    >
+                    <button type="button" class="gif-btn" id="gifButton" title="Buscar GIF" aria-label="Buscar GIF"><i data-lucide="clapperboard"></i><span>GIF</span></button>
+
+                    <input
+                        type="text"
+                        id="message"
+                        name="content"
+                        class="chat-input"
+                        placeholder="Escribe un mensaje..."
+                        autocomplete="off"
+                    >
+
+                    <button type="submit" id="send" class="send-btn" aria-label="Enviar mensaje"><i data-lucide="send-horizontal"></i></button>
+
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ======================================== -->
+<!-- PREVISUALIZACIÓN DE IMAGEN              -->
+<!-- ======================================== -->
+<div id="imagePreviewContainer" style="display: none; padding: 10px 24px; background: #f8f9fa; border-top: 1px solid #e8ecf1;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <img id="imagePreview" src="#" alt="Previsualización" style="max-height: 80px; border-radius: 8px; object-fit: cover;">
+        <button id="removeImage" type="button" class="preview-remove"><i data-lucide="x"></i>Eliminar</button>
+    </div>
+</div>
+
+<dialog id="gifDialog" class="gif-dialog">
+    <div class="gif-picker">
+        <div class="gif-dialog-head">
+            <div><span class="eyebrow">GIPHY</span><h3>Encuentra el GIF perfecto</h3></div>
+            <button type="button" id="closeGifDialog" class="icon-button" aria-label="Cerrar"><i data-lucide="x"></i></button>
+        </div>
+        <div class="gif-search-wrap">
+            <i data-lucide="search"></i>
+            <input id="gifSearch" type="search" placeholder="Busca reacciones, memes, emociones..." autocomplete="off">
+        </div>
+        <div id="gifStatus" class="gif-status">GIFs populares</div>
+        <div id="gifResults" class="gif-results" aria-live="polite"></div>
+        <div class="gif-powered">Powered by GIPHY</div>
+    </div>
+</dialog>
+
+<!-- ======================================== -->
+<!-- SCRIPT DEL CHAT                          -->
+<!-- ======================================== -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Variables del chat
+    const senderId = Number("{{ current_user.id }}");
+    const receiverId = Number("{{ other_user.id }}");
+    const username = "{{ current_user.username }}";
+    const socket = window.socket;
+
+    // ============================================
+    // SOCKET.IO
+    // El socket global ya se inicializa una sola vez en base.html
+    // (variable `socket`). Aquí solo lo reutilizamos.
+    // ============================================
+    const chatBox = document.getElementById("chat-box");
+    const messageInput = document.getElementById("message");
+    const chatForm = document.getElementById("chat-form");
+    const typingStatus = document.getElementById("typing-status");
+    const imageInput = document.getElementById("imageInput");
+    const imagePreviewContainer = document.getElementById("imagePreviewContainer");
+    const imagePreview = document.getElementById("imagePreview");
+    const removeImageBtn = document.getElementById("removeImage");
+    const gifButton = document.getElementById("gifButton");
+    const gifDialog = document.getElementById("gifDialog");
+    const closeGifDialog = document.getElementById("closeGifDialog");
+    const gifSearch = document.getElementById("gifSearch");
+    const gifResults = document.getElementById("gifResults");
+    const gifStatus = document.getElementById("gifStatus");
+
+    let selectedImage = null;
+    const receivedMessages = new Set();
+
+    // ============================================
+    // UNIRSE A LA SALA
+    // ============================================
+    socket.emit("join", {
+        sender_id: senderId,
+        receiver_id: receiverId
+    });
+
+    function scrollBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    scrollBottom();
+
+    // ============================================
+    // PREVISUALIZAR IMAGEN
+    // ============================================
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            selectedImage = file;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                imagePreview.src = event.target.result;
+                imagePreviewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    removeImageBtn.addEventListener('click', function() {
+        selectedImage = null;
+        imageInput.value = '';
+        imagePreviewContainer.style.display = 'none';
+    });
+
+    // ============================================
+    // FUNCIÓN PARA ESCAPAR HTML
+    // ============================================
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ============================================
+    // FUNCIÓN PARA AGREGAR MENSAJE
+    // ============================================
+    function addMessageToChat(content, image, isOwn, messageId, timestamp) {
+        // Evitar duplicados
+        if (messageId && receivedMessages.has(messageId)) {
+            return;
+        }
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "message " + (isOwn ? "own" : "other");
+        if (messageId) {
+            messageDiv.dataset.messageId = messageId;
+            receivedMessages.add(messageId);
+        }
+
+        // Avatar para mensajes de otros
+        let avatarHtml = '';
+        if (!isOwn) {
+            avatarHtml = `
+                <img
+                    class="message-avatar"
+                    src="{{ url_for('static', filename='uploads/' + (other_user.profile_picture or 'default.png')) }}"
+                    alt="{{ other_user.username }}"
+                >
+            `;
+        }
+
+        // Contenido
+        let contentHtml = '';
+        if (content) {
+            contentHtml = `<p class="message-content">${escapeHtml(content)}</p>`;
+        }
+
+        // Imagen
+        let imageHtml = '';
+        if (image) {
+            const imageSrc = String(image).startsWith('https://') || String(image).startsWith('blob:') ? image : `{{ url_for('static', filename='uploads/') }}${image}`;
+            imageHtml = `<img src="${imageSrc}" class="message-image" alt="Imagen o GIF">`;
+        }
+
+        // Hora
+        const now = new Date();
+        const timeStr = timestamp || String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+        messageDiv.innerHTML = `
+            ${avatarHtml}
+            <div class="bubble">
+                ${contentHtml}
+                ${imageHtml}
+                <span class="message-time">${timeStr}</span>
+            </div>
+        `;
+
+        chatBox.appendChild(messageDiv);
+        scrollBottom();
+    }
+
+    let gifSearchTimer;
+
+    async function loadGifs(query = '') {
+        gifResults.innerHTML = '<div class="gif-loading"><span></span><span></span><span></span></div>';
+        gifStatus.textContent = query ? `Resultados para “${query}”` : 'GIFs populares';
+        try {
+            const response = await fetch(`/api/giphy${query ? `?q=${encodeURIComponent(query)}` : ''}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'No pudimos cargar GIFs.');
+            if (!data.results.length) {
+                gifResults.innerHTML = '<div class="gif-empty">No encontramos GIFs con esa búsqueda.</div>';
+                return;
+            }
+            gifResults.innerHTML = data.results.map(gif => `
+                <button class="gif-result" type="button" data-gif-url="${escapeHtml(gif.url)}" aria-label="Enviar ${escapeHtml(gif.title)}">
+                    <img src="${escapeHtml(gif.preview_url)}" alt="${escapeHtml(gif.title)}" loading="lazy">
+                </button>`).join('');
+        } catch (error) {
+            gifStatus.textContent = 'GIPHY';
+            gifResults.innerHTML = `<div class="gif-empty"><i data-lucide="wifi-off"></i><strong>No se pudieron cargar los GIFs</strong><span>${escapeHtml(error.message)}</span></div>`;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+
+    async function sendGif(gifUrl) {
+        const tempId = Date.now();
+        addMessageToChat(null, gifUrl, true, tempId);
+        gifDialog?.close();
+        const formData = new FormData();
+        formData.append('gif_url', gifUrl);
+        try {
+            const response = await fetch(`{{ url_for('send_gif', user_id=other_user.id) }}`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'No se pudo enviar el GIF.');
+            const tempMsg = document.querySelector(`.message[data-message-id="${tempId}"]`);
+            if (tempMsg && data.message?.id) tempMsg.dataset.messageId = data.message.id;
+            if (data.message?.id) receivedMessages.add(data.message.id);
+        } catch (error) {
+            document.querySelector(`.message[data-message-id="${tempId}"]`)?.remove();
+            console.error(error);
+        }
+    }
+
+    gifButton?.addEventListener('click', () => {
+        gifDialog?.showModal();
+        gifSearch.value = '';
+        loadGifs();
+        setTimeout(() => gifSearch?.focus(), 80);
+    });
+    closeGifDialog?.addEventListener('click', () => gifDialog?.close());
+    gifDialog?.addEventListener('click', (event) => { if (event.target === gifDialog) gifDialog.close(); });
+    gifSearch?.addEventListener('input', () => {
+        clearTimeout(gifSearchTimer);
+        gifSearchTimer = setTimeout(() => loadGifs(gifSearch.value.trim()), 320);
+    });
+    gifResults?.addEventListener('click', event => {
+        const button = event.target.closest('[data-gif-url]');
+        if (button) sendGif(button.dataset.gifUrl);
+    });
+
+    // ============================================
+    // ENVIAR MENSAJE
+    // ============================================
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const content = messageInput.value.trim();
+
+        if (!content && !selectedImage) {
+            return;
+        }
+
+        const now = new Date();
+        const timestamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        const tempId = Date.now();
+
+        
+        let tempImage = null;
+        if (selectedImage) {
+            // Crear una URL temporal para la imagen
+            tempImage = URL.createObjectURL(selectedImage);
+        }
+
+        // Mostrar mensaje localmente
+        addMessageToChat(content, tempImage, true, tempId, timestamp);
+
+        // Limpiar input
+        messageInput.value = '';
+
+        // Si hay imagen, subirla
+        if (selectedImage) {
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('image', selectedImage);
+            formData.append('sender_id', senderId);
+            formData.append('receiver_id', receiverId);
+            formData.append('temp_id', tempId);
+
+            fetch('/send-image-message', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    //  Actualizar el mensaje con la imagen real
+                    const tempMsg = document.querySelector(`.message[data-message-id="${tempId}"]`);
+                    if (tempMsg) {
+                        const bubble = tempMsg.querySelector('.bubble');
+                        if (bubble) {
+                            // Eliminar la imagen temporal
+                            const tempImg = bubble.querySelector('.message-image');
+                            if (tempImg) {
+                                tempImg.remove();
+                                URL.revokeObjectURL(tempImg.src);
+                            }
+
+                            // Insertar la imagen real
+                            const imgHtml = `<img src="{{ url_for('static', filename='uploads/') }}${data.image}" class="message-image" alt="Imagen">`;
+                            const timeSpan = bubble.querySelector('.message-time');
+                            if (timeSpan) {
+                                timeSpan.insertAdjacentHTML('beforebegin', imgHtml);
+                            } else {
+                                bubble.insertAdjacentHTML('beforeend', imgHtml);
+                            }
+
+                            // Actualizar el ID del mensaje
+                            if (data.message_id) {
+                                tempMsg.dataset.messageId = data.message_id;
+                                receivedMessages.add(data.message_id);
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error al subir imagen:', error);
+            });
+
+            selectedImage = null;
+            imageInput.value = '';
+            imagePreviewContainer.style.display = 'none';
+
+        } else {
+            // Solo texto - enviar por Socket.IO
+            socket.emit('send_message', {
+                sender_id: senderId,
+                receiver_id: receiverId,
+                content: content,
+                temp_id: tempId
+            });
+        }
+    });
+
+    // ============================================
+    // RECIBIR MENSAJE
+    // ============================================
+    socket.on("receive_message", function(data) {
+        // Verificar si ya tenemos este mensaje
+        if (data.id && receivedMessages.has(data.id)) {
+            return;
+        }
+
+        // Solo agregar si NO es el remitente
+        if (data.sender_id !== senderId) {
+            addMessageToChat(data.content, data.image, false, data.id, data.timestamp);
+        } else {
+            // Si es el remitente, guardar el ID
+            if (data.id) {
+                receivedMessages.add(data.id);
+            }
+        }
+    });
+
+    // ============================================
+    // TYPING
+    // ============================================
+    let typingTimer;
+    messageInput.addEventListener("input", function() {
+        socket.emit("typing", {
+            sender_id: senderId,
+            receiver_id: receiverId,
+            username: username
+        });
+
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(function() {
+            typingStatus.innerText = "";
+        }, 1500);
+    });
+
+    socket.on("typing", function(data) {
+        if (data.username && data.sender_id === receiverId) {
+            typingStatus.innerText = data.username + " está escribiendo...";
+        }
+    });
+
+    // ============================================
+    // ESTADO ONLINE/OFFLINE
+    // ============================================
+    socket.on("user_status", function(data) {
+        if (data.user_id === receiverId) {
+            const statusDot = document.querySelector(".status-dot");
+            const statusText = document.querySelector(".status-text");
+
+            if (statusDot) {
+                statusDot.className = "status-dot " + (data.is_online ? "online" : "offline");
+            }
+            if (statusText) {
+                statusText.textContent = data.is_online ? "Conectado" : "Desconectado";
+            }
+        }
+    });
+
+    // ============================================
+    // SALIR DE SALA
+    // ============================================
+    window.addEventListener("beforeunload", function() {
+        socket.emit("leave", {
+            sender_id: senderId,
+            receiver_id: receiverId
+        });
+    });
+
+    console.log('chat iniciado correctamente');
+</script>
+
+{% endblock %}

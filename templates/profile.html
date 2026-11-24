@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}@{{ user.username }} | ICCP Social{% endblock %}
+
+{% block content %}
+<section class="profile-page" data-profile-tabs>
+    <article class="profile-hero">
+        <div class="profile-cover" aria-hidden="true">
+            <div class="profile-cover-orb profile-cover-orb-one"></div>
+            <div class="profile-cover-orb profile-cover-orb-two"></div>
+        </div>
+
+        <div class="profile-hero-body">
+            <div class="profile-avatar-row">
+                <img
+                    class="profile-avatar-xl"
+                    src="{{ url_for('static', filename='uploads/' + (user.profile_picture or 'default.png')) }}?v={{ user.id }}"
+                    alt="Foto de perfil de {{ user.username }}"
+                >
+
+                <div class="profile-primary-actions">
+                    {% if current_user.id == user.id %}
+                        <a class="profile-action-secondary" href="{{ url_for('edit_profile') }}"><i data-lucide="pencil"></i><span>Editar perfil</span></a>
+                        <a class="profile-action-primary" href="{{ url_for('create_post') }}"><i data-lucide="plus"></i><span>Publicar</span></a>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('unfollow_user' if is_following else 'follow_user', user_id=user.id) }}" class="inline-form" data-ajax-advancement>
+                            <button class="{{ 'profile-action-secondary' if is_following else 'profile-action-primary' }}" type="submit">
+                                <i data-lucide="{{ 'user-check' if is_following else 'user-plus' }}"></i>
+                                <span>{{ 'Siguiendo' if is_following else 'Seguir' }}</span>
+                            </button>
+                        </form>
+                        <a class="profile-action-secondary profile-action-icon" href="{{ url_for('chat', user_id=user.id) }}" aria-label="Enviar mensaje"><i data-lucide="message-circle"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="profile-identity">
+                <div class="profile-name-line">
+                    <h1>{{ user.username }}</h1>
+                    {% if user.is_online %}<span class="profile-online" title="En línea"><span></span>En línea</span>{% endif %}
+                </div>
+                <p class="profile-handle">@{{ user.username }}</p>
+                <p class="profile-bio-modern">{{ user.bio if user.bio else 'Este usuario todavía no ha agregado una biografía.' }}</p>
+
+                <div class="profile-meta">
+                    <span><i data-lucide="calendar-days"></i>Se unió en {{ user.created_at|localtime("%B de %Y") }}</span>
+                    {% if current_user.id == user.id %}<span><i data-lucide="mail"></i>{{ user.email }}</span>{% endif %}
+                </div>
+
+                <div class="profile-metrics">
+                    <div class="profile-metric"><strong>{{ posts|length }}</strong><span>Publicaciones</span></div>
+                    <a class="profile-metric" href="{{ url_for('followers_list', user_id=user.id) }}"><strong>{{ followers_count }}</strong><span>Seguidores</span></a>
+                    <a class="profile-metric" href="{{ url_for('following_list', user_id=user.id) }}"><strong>{{ following_count }}</strong><span>Siguiendo</span></a>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <div class="profile-tabs" role="tablist" aria-label="Contenido del perfil">
+        <button class="profile-tab active" type="button" data-profile-tab="all"><i data-lucide="layout-grid"></i><span>Publicaciones</span></button>
+        <button class="profile-tab" type="button" data-profile-tab="media"><i data-lucide="image"></i><span>Multimedia</span></button>
+    </div>
+
+    <section class="profile-feed" id="profileFeed">
+        {% if posts %}
+            {% for post in posts %}
+            <article class="post-card profile-post" data-has-media="{{ 'true' if post.image else 'false' }}">
+                <div class="post-header">
+                    <a class="post-author" href="{{ url_for('user_profile', user_id=user.id) if current_user.id != user.id else url_for('profile') }}">
+                        <img class="post-avatar" src="{{ url_for('static', filename='uploads/' + (user.profile_picture or 'default.png')) }}?v={{ user.id }}" alt="{{ user.username }}">
+                        <div><strong>{{ user.username }}</strong><span>@{{ user.username }} · {{ post.created_at|localtime("%d/%m/%Y") }}</span></div>
+                    </a>
+                    {% if current_user.id == user.id %}
+                    <a class="post-menu-button delete-post" href="{{ url_for('delete_post', post_id=post.id) }}" aria-label="Eliminar publicación" data-ajax-advancement data-ajax-method="GET" data-ajax-confirm="¿Eliminar esta publicación?"><i data-lucide="trash-2"></i></a>
+                    {% endif %}
+                </div>
+
+                <div class="post-content profile-post-content">
+                    <p>{{ post.content|hashtags }}</p>
+                    {% if post.image %}
+                    <img class="post-image" src="{{ url_for('static', filename='uploads/' + post.image) }}" alt="Imagen publicada por {{ user.username }}">
+                    {% endif %}
+                </div>
+
+                <div class="profile-post-footer">
+                    <span><i data-lucide="message-circle"></i>{{ post.comments|length }}</span>
+                    <span><i data-lucide="heart"></i>Me gusta</span>
+                    <span><i data-lucide="share-2"></i>Compartir</span>
+                </div>
+            </article>
+            {% endfor %}
+        {% else %}
+            <div class="profile-empty-state">
+                <div class="profile-empty-icon"><i data-lucide="feather"></i></div>
+                <h2>Aún no hay publicaciones</h2>
+                <p>{% if current_user.id == user.id %}Tu perfil está listo. Comparte algo para estrenarlo.{% else %}@{{ user.username }} todavía no ha publicado.{% endif %}</p>
+                {% if current_user.id == user.id %}<a class="btn-primary" href="{{ url_for('create_post') }}"><i data-lucide="plus"></i>Crear publicación</a>{% endif %}
+            </div>
+        {% endif %}
+
+        <div class="profile-empty-state profile-media-empty" hidden>
+            <div class="profile-empty-icon"><i data-lucide="images"></i></div>
+            <h2>Sin multimedia todavía</h2>
+            <p>Las publicaciones con imágenes aparecerán aquí.</p>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('[data-profile-tab]').forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const mode = tab.dataset.profileTab;
+            document.querySelectorAll('[data-profile-tab]').forEach(item => item.classList.toggle('active', item === tab));
+            const posts = [...document.querySelectorAll('.profile-post')];
+            posts.forEach(post => post.hidden = mode === 'media' && post.dataset.hasMedia !== 'true');
+            const visibleMedia = posts.some(post => !post.hidden);
+            const mediaEmpty = document.querySelector('.profile-media-empty');
+            if (mediaEmpty) mediaEmpty.hidden = mode !== 'media' || visibleMedia;
+        });
+    });
+</script>
+{% endblock %}

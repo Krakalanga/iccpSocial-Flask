@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}
+Mensajes | ICCP Social
+{% endblock %}
+
+{% block content %}
+
+<div class="messages-container">
+
+    <!-- ======================================== -->
+    <!-- HEADER CON BÚSQUEDA                      -->
+    <!-- ======================================== -->
+    <div class="messages-header">
+        <div class="header-content">
+            <div>
+                <h1>Mensajes</h1>
+                <p class="subtitle">Conecta con otros usuarios y comienza una conversación</p>
+            </div>
+            <div class="header-actions">
+                <span class="user-count">
+                    <i data-lucide="users"></i>
+                    {{ users|length }} usuarios disponibles
+                </span>
+            </div>
+        </div>
+        
+        <!-- Barra de búsqueda -->
+        <div class="search-bar">
+            <i data-lucide="search"></i>
+            <input 
+                type="text" 
+                id="searchUsers" 
+                class="search-input" 
+                placeholder="Buscar usuarios por nombre..."
+                autocomplete="off"
+            >
+        </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- LISTA DE USUARIOS                       -->
+    <!-- ======================================== -->
+    <div class="users-list" id="usersList">
+
+        {% if users %}
+
+            {% for user in users %}
+
+            <!-- ✅ AGREGADO: data-user-id para identificar usuarios -->
+            <div class="user-card" data-username="{{ user.username|lower }}" data-user-id="{{ user.id }}">
+                
+                <!-- ======================================== -->
+                <!-- AVATAR CON ENLACE AL PERFIL             -->
+                <!-- ======================================== -->
+                <a 
+                    href="{{ url_for('user_profile', user_id=user.id) }}"
+                    class="user-avatar-link"
+                    title="Ver perfil de {{ user.username }}"
+                >
+                    <div class="user-avatar-wrapper">
+                        <img
+                            class="user-avatar"
+                            src="{{ url_for(
+                                'static',
+                                filename='uploads/' + (user.profile_picture or 'default.png')
+                            ) }}"
+                            alt="Foto de perfil de {{ user.username }}"
+                        >
+                        <!-- ✅ CORREGIDO: Estado dinámico con ID único -->
+                        <span class="status-indicator {% if user.is_online %}online{% else %}offline{% endif %}" 
+                              id="status-{{ user.id }}"></span>
+                    </div>
+                </a>
+
+                <!-- ======================================== -->
+                <!-- INFORMACIÓN DEL USUARIO                 -->
+                <!-- ======================================== -->
+                <div class="user-info">
+                    <div class="user-name-wrapper">
+                        <!-- NOMBRE CON ENLACE AL PERFIL -->
+                        <a 
+                            href="{{ url_for('user_profile', user_id=user.id) }}"
+                            class="username-link"
+                            title="Ver perfil de {{ user.username }}"
+                        >
+                            <h3 class="username">{{ user.username }}</h3>
+                        </a>
+                        {% if user.id == current_user.id %}
+                            <span class="badge-you">Tú</span>
+                        {% endif %}
+                        
+                        <!-- ✅ AGREGADO: Texto de estado -->
+                        <span class="status-text {% if user.is_online %}online-text{% else %}offline-text{% endif %}">
+                            {% if user.is_online %}● Conectado{% else %}○ Desconectado{% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if user.bio %}
+                        <p class="user-bio">{{ user.bio }}</p>
+                    {% else %}
+                        <p class="user-bio muted">Sin biografía</p>
+                    {% endif %}
+                    
+                    <!-- Última conexión -->
+                    <div class="user-meta">
+                        <span class="meta-item">
+                            <i data-lucide="message-circle"></i>
+                            {% if user.last_seen %}
+                                Última vez: {{ user.last_seen|localtime('%d/%m/%Y · %H:%M') }}
+                            {% else %}
+                                Recién registrado
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Botón de acción -->
+                <a
+                    href="{{ url_for('chat', user_id=user.id) }}"
+                    class="btn-chat"
+                >
+                    <i data-lucide="arrow-right"></i>
+                    <span>Chat</span>
+                </a>
+
+            </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <!-- Estado vacío mejorado -->
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i data-lucide="messages-square"></i>
+                </div>
+                <h2>No hay usuarios disponibles</h2>
+                <p>Cuando otros usuarios se registren, aparecerán aquí para que puedas chatear con ellos.</p>
+                <a href="{{ url_for('home') }}" class="btn-primary">
+                    <i data-lucide="house"></i>
+                    Volver al inicio
+                </a>
+            </div>
+
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- ======================================== -->
+<!-- SCRIPT PARA BÚSQUEDA Y ESTADO EN VIVO   -->
+<!-- ======================================== -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // ========================================
+        // 1. BÚSQUEDA DE USUARIOS
+        // ========================================
+        const searchInput = document.getElementById('searchUsers');
+        const userCards = document.querySelectorAll('.user-card');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                
+                userCards.forEach(card => {
+                    const username = card.dataset.username || '';
+                    const bio = card.querySelector('.user-bio')?.textContent?.toLowerCase() || '';
+                    
+                    if (username.includes(searchTerm) || bio.includes(searchTerm)) {
+                        card.style.display = 'flex';
+                        card.style.animation = 'fadeIn 0.3s ease';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Mostrar mensaje si no hay resultados
+                const visibleCards = document.querySelectorAll('.user-card[style*="display: flex"]');
+                const existingMsg = document.querySelector('.no-results');
+                
+                if (visibleCards.length === 0 && userCards.length > 0) {
+                    if (!existingMsg) {
+                        const msg = document.createElement('div');
+                        msg.className = 'no-results';
+                        msg.innerHTML = `
+                            <div class="empty-state small">
+                                <p>No se encontraron usuarios con "${this.value}"</p>
+                            </div>
+                        `;
+                        document.getElementById('usersList').appendChild(msg);
+                    }
+                } else {
+                    if (existingMsg) {
+                        existingMsg.remove();
+                    }
+                }
+            });
+        }
+        
+        // ========================================
+        // 2. SOCKET.IO - ESTADO EN TIEMPO REAL
+        // ========================================
+        // El socket ya está inicializado en base.html
+        // Solo necesitamos escuchar los eventos
+        
+        if (typeof socket !== 'undefined') {
+            
+            // ✅ Escuchar cambios de estado
+            socket.on('user_status', function(data) {
+                console.log('📡 Estado recibido:', data);
+                
+                // Actualizar punto indicador (círculo)
+                const statusDot = document.getElementById('status-' + data.user_id);
+                if (statusDot) {
+                    statusDot.className = 'status-indicator ' + (data.is_online ? 'online' : 'offline');
+                }
+                
+                // Actualizar texto de estado
+                const userCard = document.querySelector(`.user-card[data-user-id="${data.user_id}"]`);
+                if (userCard) {
+                    const statusText = userCard.querySelector('.status-text');
+                    if (statusText) {
+                        statusText.className = 'status-text ' + (data.is_online ? 'online-text' : 'offline-text');
+                        statusText.textContent = data.is_online ? '● Conectado' : '○ Desconectado';
+                    }
+                }
+            });
+            
+            // ✅ Solicitar estado de todos los usuarios al conectar
+            socket.on('connect', function() {
+                console.log('✅ Solicitando estados de todos los usuarios...');
+                socket.emit('get_all_status');
+            });
+            
+        } else {
+            console.warn('⚠️ Socket no disponible - asegúrate de que base.html tiene el script');
+        }
+    });
+</script>
+
+{% endblock %}

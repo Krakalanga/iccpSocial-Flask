@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}
+Editar perfil | ICCP Social
+{% endblock %}
+
+{% block content %}
+
+<div class="edit-profile-container">
+    <div class="edit-profile-card">
+        
+        <!-- ======================================== -->
+        <!-- HEADER CON FOTO DE PERFIL               -->
+        <!-- ======================================== -->
+        <div class="edit-header">
+            
+            <!-- Avatar con overlay -->
+            <label for="profile_picture" class="profile-upload-wrapper">
+                <div class="profile-avatar-container">
+                    <img
+                        src="{{ url_for('static', filename='uploads/' + (current_user.profile_picture or 'default.png')) }}"
+                        class="profile-avatar-preview"
+                        alt="Foto de perfil"
+                        id="avatarPreview"
+                    >
+                    <div class="avatar-overlay">
+                        <i data-lucide="camera"></i>
+                        <span>Cambiar foto</span>
+                    </div>
+                </div>
+                {{ form.profile_picture(id="profile_picture", class="hidden-file", onchange="previewImage(this)", form="editProfileForm") }}
+            </label>
+
+            <div class="edit-title">
+                <h1>Editar perfil</h1>
+                <p>Actualiza tu información personal</p>
+            </div>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- FORMULARIO                              -->
+        <!-- ======================================== -->
+        <form method="POST" enctype="multipart/form-data" class="edit-form" id="editProfileForm" data-ajax-advancement>
+            
+            {{ form.hidden_tag() }}
+
+            <!-- Usuario -->
+            <div class="form-group">
+                <div class="form-label-wrapper">
+                    {{ form.username.label(class="form-label") }}
+                    <span class="field-required">*</span>
+                </div>
+                
+                <div class="input-wrapper">
+                    <i data-lucide="user-round"></i>
+                    {{ form.username(
+                        class="form-input",
+                        placeholder="Nombre de usuario"
+                    ) }}
+                </div>
+
+                {% for error in form.username.errors %}
+                    <small class="form-error">
+                        <i data-lucide="circle-alert"></i>
+                        {{ error }}
+                    </small>
+                {% endfor %}
+            </div>
+
+            <!-- Biografía -->
+            <div class="form-group">
+                {{ form.bio.label(class="form-label") }}
+                
+                <div class="input-wrapper textarea-wrapper">
+                    <i data-lucide="pencil"></i>
+                    {{ form.bio(
+                        class="form-input textarea-input",
+                        placeholder="Cuéntanos algo sobre ti...",
+                        rows="4"
+                    ) }}
+                </div>
+
+                <div class="char-counter">
+                    <span id="charCount">0</span> / 500 caracteres
+                </div>
+
+                {% for error in form.bio.errors %}
+                    <small class="form-error">
+                        <i data-lucide="circle-alert"></i>
+                        {{ error }}
+                    </small>
+                {% endfor %}
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="form-actions">
+                <a href="{{ url_for('profile') }}" class="btn-cancel">
+                    <i data-lucide="x"></i>
+                    Cancelar
+                </a>
+                
+                <button type="submit" class="btn-save">
+                    <i data-lucide="save"></i>
+                    Guardar cambios
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- ======================================== -->
+<!-- SCRIPT PARA PREVISUALIZACIÓN Y CONTADOR -->
+<!-- ======================================== -->
+<script>
+    // Previsualizar imagen seleccionada
+    function previewImage(input) {
+        const preview = document.getElementById('avatarPreview');
+        const file = input.files[0];
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Contador de caracteres para biografía
+    document.addEventListener('DOMContentLoaded', function() {
+        const bioInput = document.querySelector('.textarea-input');
+        const charCount = document.getElementById('charCount');
+        
+        if (bioInput && charCount) {
+            // Actualizar contador inicial
+            charCount.textContent = bioInput.value.length;
+            
+            bioInput.addEventListener('input', function() {
+                const count = this.value.length;
+                charCount.textContent = count;
+                
+                // Cambiar color si se acerca al límite
+                if (count > 450) {
+                    charCount.style.color = '#e53935';
+                } else if (count > 400) {
+                    charCount.style.color = '#f6b93b';
+                } else {
+                    charCount.style.color = '#8892b0';
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}

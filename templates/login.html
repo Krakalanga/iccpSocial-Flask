@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}
+Iniciar sesión | ICCP Social
+{% endblock %}
+
+{% block content %}
+
+<div class="auth-container">
+
+    <div class="auth-card">
+
+        <div class="auth-header">
+
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="ICCP Social" class="auth-logo">
+
+            <h1>ICCP Social</h1>
+
+            <p>
+                Inicia sesión para continuar.
+            </p>
+
+        </div>
+
+        <form method="POST" novalidate data-ajax-advancement>
+
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+
+                {{ form.email.label }}
+
+                {{ form.email(
+                    class="form-control",
+                    placeholder="correo@ejemplo.com"
+                ) }}
+
+                {% for error in form.email.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.password.label }}
+
+                {{ form.password(
+                    class="form-control",
+                    placeholder="Contraseña"
+                ) }}
+
+                {% for error in form.password.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                {{ form.submit(
+                    class="btn-primary"
+                ) }}
+
+            </div>
+
+        </form>
+
+        <div class="auth-footer">
+
+            <p>
+
+                ¿No tienes una cuenta?
+
+                <a href="{{ url_for('register') }}">
+                    Regístrate aquí
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

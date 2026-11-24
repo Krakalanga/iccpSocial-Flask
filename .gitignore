@@ -1,0 +1,25 @@
+# Entorno virtual
+venv/
+env/
+.venv/
+
+# Cachés de Python
+__pycache__/
+*.pyc
+
+# Base de datos local
+*.db
+
+# Archivos de entorno
+.env
+
+# Imágenes subidas por usuarios (excepto la de por defecto)
+static/uploads/*
+!static/uploads/default.png
+
+# Sistema operativo / editores
+.DS_Store
+.vscode/
+.idea/
+
+.worktrees/

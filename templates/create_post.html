@@ -1,0 +1,131 @@
+<!-- create_post.html -->
+{% extends "base.html" %}
+
+{% block title %}
+Crear publicación
+{% endblock %}
+
+{% block content %}
+
+<div class="create-post-container">
+
+    <div class="create-post-card">
+
+        <div class="page-header">
+            <h1>Nueva publicación</h1>
+            <p class="page-subtitle">Comparte lo que quieras con la comunidad</p>
+        </div>
+
+        <!-- ✅ IMPORTANTE: enctype="multipart/form-data" -->
+        <form
+            id="createPostForm"
+            method="POST"
+            action="{{ url_for('create_post') }}"
+            enctype="multipart/form-data"
+            class="create-post-form"
+            data-ajax-advancement>
+
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                {{ form.content.label(class="form-label") }}
+                {{ form.content(
+                    class="form-control textarea",
+                    placeholder="¿Qué estás pensando?",
+                    rows="5"
+                ) }}
+                {% for error in form.content.errors %}
+                    <small class="form-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                {{ form.image.label(class="form-label") }}
+                
+                <div class="file-upload-wrapper">
+                    <div class="file-upload-area" id="fileDropArea">
+                        <div class="file-upload-placeholder">
+                            <i data-lucide="image-plus"></i>
+                            <span class="upload-text">Haz clic para subir una imagen</span>
+                            <span class="upload-hint">Formatos: JPG, PNG, GIF, WEBP</span>
+                        </div>
+                        {{ form.image(
+                            class="file-input",
+                            id="imageInput",
+                            accept="image/*",
+                            style="display: none;"
+                        ) }}
+                    </div>
+                </div>
+
+                <!-- Previsualización de imagen -->
+                <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                    <p class="preview-label">Vista previa:</p>
+                    <img id="imagePreview" class="image-preview" src="#" alt="Vista previa">
+                    <button type="button" class="remove-image-btn" id="removeImage"><i data-lucide="x"></i> Eliminar imagen</button>
+                </div>
+
+                {% for error in form.image.errors %}
+                    <small class="form-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+
+            <div class="button-group">
+                <a href="{{ url_for('home') }}" class="btn-secondary">Cancelar</a>
+                <button type="submit" class="btn-primary btn-submit">
+                    <i data-lucide="save"></i>
+                    Publicar
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- Script para previsualización de imagen -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageInput = document.getElementById('imageInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+        const removeBtn = document.getElementById('removeImage');
+        const fileDropArea = document.getElementById('fileDropArea');
+
+        // Click en el área de drop para abrir el selector de archivos
+        if (fileDropArea) {
+            fileDropArea.addEventListener('click', function() {
+                imageInput.click();
+            });
+        }
+
+        // Previsualizar imagen al seleccionar
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewImage.src = event.target.result;
+                        previewContainer.style.display = 'block';
+                        fileDropArea.classList.add('has-file');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Eliminar imagen
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                imageInput.value = '';
+                previewImage.src = '#';
+                previewContainer.style.display = 'none';
+                fileDropArea.classList.remove('has-file');
+            });
+        }
+    });
+</script>
+
+{% endblock %}

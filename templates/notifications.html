@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones | ICCP Social{% endblock %}
+{% block content %}
+<div class="notifications-page">
+    <header class="notifications-header">
+        <div>
+            <span class="eyebrow">ACTIVIDAD</span>
+            <h1>Notificaciones</h1>
+            <p>Seguimientos, comentarios y mensajes pendientes.</p>
+        </div>
+        {% if unread_notifications %}
+        <form method="POST" action="{{ url_for('mark_notifications_read') }}" data-ajax-advancement>
+            <button class="btn-secondary" type="submit">Marcar como leídas</button>
+        </form>
+        {% endif %}
+    </header>
+
+    {% if unread_messages %}
+    <a class="notification-item notification-message" href="{{ url_for('conversations') }}">
+        <span class="notification-icon">✉</span>
+        <div><strong>Tienes {{ unread_messages }} mensaje{{ 's' if unread_messages != 1 else '' }} sin leer</strong><span>Abre tus conversaciones para responder.</span></div>
+        <span class="notification-arrow">→</span>
+    </a>
+    {% endif %}
+
+    <section class="notifications-list">
+        {% for item in notifications %}
+        <a class="notification-item {% if not item.is_read %}unread{% endif %}" href="{{ item.link or url_for('home') }}">
+            {% if item.actor %}
+            <img class="notification-avatar" src="{{ url_for('static', filename='uploads/' + (item.actor.profile_picture or 'default.png')) }}" alt="">
+            {% else %}<span class="notification-icon">•</span>{% endif %}
+            <div>
+                <strong>{{ item.text }}</strong>
+                <span>{{ item.created_at|localtime('%d/%m · %H:%M') }}</span>
+            </div>
+            {% if not item.is_read %}<span class="notification-dot"></span>{% endif %}
+        </a>
+        {% else %}
+        <div class="empty-state compact"><h3>Todo al día</h3><p>Cuando alguien te siga o comente tus publicaciones aparecerá aquí.</p></div>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Inicio | ICCP Social{% endblock %}
+{% block content %}
+<div class="feed-layout">
+    <section class="feed-column" id="feed">
+        <div class="mobile-feed-title">
+            <div><span class="eyebrow">COMUNIDAD ICCP</span><h1>Tu espacio</h1></div>
+            <div class="mobile-title-actions">
+                <a class="mobile-bell" href="{{ url_for('notifications') }}" aria-label="Notificaciones">
+                    <i data-lucide="bell"></i>
+                    {% if unread_notifications %}<span>{{ unread_notifications }}</span>{% endif %}
+                </a>
+                <a class="mini-avatar" href="{{ url_for('profile') }}"><img src="{{ url_for('static', filename='uploads/' + (current_user.profile_picture or 'default.png')) }}" alt="Tu perfil"></a>
+            </div>
+        </div>
+
+        <div class="feed-tabs" role="tablist">
+            <a class="feed-tab {% if feed != 'following' %}active{% endif %}" href="{{ url_for('home') }}">Para ti</a>
+            <a class="feed-tab {% if feed == 'following' %}active{% endif %}" href="{{ url_for('home', feed='following') }}">Siguiendo</a>
+        </div>
+        {% if active_tag %}<div class="tag-context"><span>Publicaciones con</span><strong>#{{ active_tag }}</strong><a href="{{ url_for('home') }}">Quitar filtro</a></div>{% endif %}
+
+        <a class="composer-card" href="{{ url_for('create_post') }}">
+            <img class="avatar" src="{{ url_for('static', filename='uploads/' + (current_user.profile_picture or 'default.png')) }}" alt="Tu avatar">
+            <span class="composer-placeholder">¿Qué quieres compartir hoy?</span>
+            <span class="composer-action"><i data-lucide="pencil"></i></span>
+        </a>
+
+        {% if posts %}
+            {% for post in posts %}
+            <article class="post-card" id="post-{{ post.id }}">
+                <header class="post-header">
+                    <a class="post-author" href="{{ url_for('user_profile', user_id=post.author.id) }}">
+                        <img class="avatar" src="{{ url_for('static', filename='uploads/' + (post.author.profile_picture or 'default.png')) }}" alt="Avatar de {{ post.author.username }}">
+                        <span class="post-author-copy"><strong>{{ post.author.username }}</strong><span>@{{ post.author.username }} · {{ post.created_at|localtime('%d/%m') }}</span></span>
+                    </a>
+                    {% if current_user.id == post.author.id %}
+                    <a class="post-menu delete-post" href="{{ url_for('delete_post', post_id=post.id) }}" title="Eliminar publicación" aria-label="Opciones" data-ajax-advancement data-ajax-method="GET" data-ajax-confirm="¿Eliminar esta publicación?">•••</a>
+                    {% else %}<button class="post-menu" type="button" aria-label="Opciones">•••</button>{% endif %}
+                </header>
+
+                <div class="post-content">
+                    {% if post.content %}<p class="post-text">{{ post.content|hashtags }}</p>{% endif %}
+                    {% if post.image %}<div class="post-media"><img src="{{ url_for('static', filename='uploads/' + post.image) }}" alt="Imagen de la publicación"></div>{% endif %}
+                </div>
+
+                <div class="post-actions">
+                    <button class="post-action like-action" type="button" title="Me gusta"><i data-lucide="heart"></i><span>Me gusta</span></button>
+                    <button class="post-action comments-toggle" type="button" data-target="comments-{{ post.id }}"><i data-lucide="message-circle"></i><span>{{ post.comments|length }}</span></button>
+                    <button class="post-action demo-action" type="button" data-message="Compartir estará disponible en la próxima versión"><i data-lucide="share-2"></i><span>Compartir</span></button>
+                    <button class="post-action bookmark demo-action" type="button" data-message="Guardados llegará en la próxima versión" aria-label="Guardar"><i data-lucide="bookmark"></i></button>
+                </div>
+
+                <section class="comments-section" id="comments-{{ post.id }}">
+                    {% for comment in post.comments %}
+                    <div class="comment">
+                        <img class="comment-avatar" src="{{ url_for('static', filename='uploads/' + (comment.author.profile_picture or 'default.png')) }}" alt="">
+                        <div class="comment-bubble"><div><strong>{{ comment.author.username }}</strong><span>{{ comment.created_at|localtime('%d/%m · %H:%M') }}</span></div><p>{{ comment.content }}</p></div>
+                    </div>
+                    {% endfor %}
+                    <form method="POST" action="{{ url_for('add_comment', post_id=post.id) }}" class="comment-form" data-ajax-advancement>
+                        <img class="comment-avatar" src="{{ url_for('static', filename='uploads/' + (current_user.profile_picture or 'default.png')) }}" alt="">
+                        <div class="comment-compose"><input type="text" name="content" placeholder="Escribe un comentario..." required><button type="submit" aria-label="Enviar comentario"><i data-lucide="send-horizontal"></i></button></div>
+                    </form>
+                </section>
+            </article>
+            {% endfor %}
+        {% else %}
+        <div class="empty-state-card"><div class="empty-icon">✦</div><h2>Tu feed está esperando</h2><p>Comparte la primera publicación de la comunidad y dale vida a ICCP Social.</p><a class="btn-primary" href="{{ url_for('create_post') }}">Crear publicación</a></div>
+        {% endif %}
+    </section>
+
+    <aside class="feed-sidebar">
+        <div class="sidebar-card welcome-card"><span class="eyebrow">ICCP SOCIAL</span><h2>Todo lo que pasa, en un solo lugar.</h2><p>Comparte ideas, conversa y conecta con tu comunidad.</p><a href="{{ url_for('create_post') }}" class="btn-primary full">Crear publicación</a></div>
+        <div class="sidebar-card"><div class="sidebar-heading"><h3>Accesos rápidos</h3><span>Hoy</span></div><a class="quick-link" href="{{ url_for('conversations') }}"><span class="quick-icon">✉</span><span><strong>Mensajes</strong><small>Continúa tus conversaciones</small></span><b>›</b></a><a class="quick-link" href="{{ url_for('profile') }}"><span class="quick-icon">◉</span><span><strong>Tu perfil</strong><small>Personaliza tu identidad</small></span><b>›</b></a></div>
+    </aside>
+</div>
+<div class="toast" id="appToast" role="status"></div>
+{% endblock %}
